@@ -1,0 +1,147 @@
+---
+
+- name: Wait up to 300 seconds for SSH to be up
+  wait_for_connection:
+    timeout: 300
+
+- name: wait for boot-finished file to exist
+  raw: test -f /var/lib/cloud/instance/boot-finished
+  retries: 50
+  register: cmd_res
+  changed_when: false
+  until: cmd_res is success
+
+- name: gather facts
+  ansible.builtin.setup:
+
+- name: determine a valid hostname
+  set_fact:
+    hostonamu: "{{ inventory_hostname | regex_replace('_', '-') }}"
+
+- name: deboogey
+  debug:
+    var: hostonamu
+
+- name: set hostname
+  ansible.builtin.hostname:
+    name: "{{ hostonamu }}"
+
+- name: Set FUTUREPORN_WORKDIR env var
+  ansible.builtin.lineinfile:
+    dest: /root/.bashrc
+    line: "export FUTUREPORN_WORKDIR=/root/"
+    state: present
+
+- name: Set Twitter api key in env
+  ansible.builtin.lineinfile:
+    dest: /root/.bashrc
+    line: "export TWITTER_API_KEY={{ lookup('env', 'TWITTER_API_KEY') }}"
+    state: present
+
+- name: Set Twitter secret in env
+  ansible.builtin.lineinfile:
+    dest: /root/.bashrc
+    line: "export TWITTER_API_KEY_SECRET={{ lookup('env', 'TWITTER_API_KEY_SECRET') }}"
+    state: present
+
+- name: Set WEB3_TOKEN secret in env
+  ansible.builtin.lineinfile:
+    dest: /root/.bashrc
+    line: "export WEB3_TOKEN={{ lookup('env', 'WEB3_TOKEN') }}"
+    state: present
+
+- name: Install dependencies
+  become: yes
+  apt:
+    pkg: 
+      - python3
+      - python3-pip
+      - mg 
+      - git
+      - magic-wormhole
+      - ffmpeg
+      - mosh
+    state: present
+    update_cache: yes
+
+- name: Install latest rclone
+  apt:
+    deb: https://downloads.rclone.org/rclone-current-linux-amd64.deb
+    state: present
+    # this is necessary because the apt version has a B2 upload bug
+
+- name: create ufw exception for mosh
+  community.general.ufw:
+    rule: allow
+    port: 60000:61000
+    proto: udp
+
+- name: Create rclone conf directory
+  ansible.builtin.file:
+    state: directory
+    path: /root/.config/rclone
+    mode: '0755'
+
+- name: Configure rclone
+  ansible.builtin.template:
+    src: templates/rclone.conf.j2
+    dest: /root/.config/rclone/rclone.conf
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Download screen configuration
+  git:
+    repo: 'https://github.com/insanity54/dotfiles'
+    dest: /root/dotfiles
+
+- name: Configure screen
+  copy:
+    src: /root/dotfiles/.screenrc
+    dest: /root/.screenrc
+    remote_src: yes
+
+- name: Install & update youtube-dl
+  pip:
+    name: youtube-dl
+    state: latest
+
+- name: Install futureporn
+  git:
+    repo: https://github.com/insanity54/futureporn
+    dest: /root/futureporn
+
+- name: Install & update voddo
+  git:
+    repo: 'https://github.com/insanity54/voddo'
+    dest: /root/voddo
+
+- name: Install voddo system service
+  ansible.builtin.template:
+    src: templates/voddo.service.j2
+    dest: /etc/systemd/system/voddo.service
+    owner: root
+    group: root
+    mode: '0755'
+  notify: 
+    - restart voddo
+
+- name: Enable voddo system service
+  systemd:
+    name: voddo
+    state: started
+    daemon_reload: yes
+    enabled: yes
+  notify:
+    - restart voddo
+
+- name: Enable journalctl persistent logging
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/journald.conf
+    search_string: '^Storage='
+    line: 'Storage=persistent'
+    state: present
+  notify: 
+    - restart systemd-journald
+
+

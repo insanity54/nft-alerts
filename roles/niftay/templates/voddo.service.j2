@@ -1,0 +1,11 @@
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description="voddo for immls"
+After=network.target
+
+[Service]
+ExecStart=/root/voddo/voddo.sh https://chaturbate.com/projektmelody
+WorkingDirectory=/root
+Type=simple

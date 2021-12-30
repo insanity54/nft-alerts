@@ -67,10 +67,16 @@ const TG = require('./token.gallery.js');
     // ex: ['zadd', `token:${token.nftId}:sales`, timestamp, 'field', 'value']
     const tokenSet = await redis.smembers('tokenSet');
     let blockTarget = await web3.eth.getBlockNumber();
-    debug(`blockTarget:${blockTarget}`);
-    const tokenStores = tokenSet.map((tokenId) => tokenId);
+    debug(`[i] blockTarget:${blockTarget}`);
+    let tokenStores = [];
+    for (const tokenId of tokenSet) {
+        const store = await redis.hget(`token:${tokenId}:metadata`, 'store');
+        debug(`[*] ${tokenId} -> ${store}`)
+        tokenStores.push(store);
+    };
     debug(tokenStores)
     const blockStart = 700000
+    process.exit();
 
     await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
 
@@ -85,7 +91,19 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
             for (let txHash of block.transactions) {
                 let tx = await web3.eth.getTransaction(txHash);
                 const txMatchIndex = arrayOfTxHashes.indexOf(tx.to);
+                debug(`[*] checking ${tx.to}`)
                 if (txMatchIndex > -1) {
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
+                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+] Transaction found on block ${ lastBlockNumber }`);
                     debug({
                         address: tx.from,

@@ -44,6 +44,3 @@
     port: 60000:61000
     proto: udp
 
-- name: install node
-  roles:
-    - role: geerlingguy.nodejs

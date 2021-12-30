@@ -1,8 +1,10 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, text)
+import Html exposing (Html, button, div, text, header)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
+
 
 main =
   Browser.sandbox { init = init, update = update, view = view }
@@ -27,8 +29,9 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  div []
-    [ button [ onClick Decrement ] [ text "-" ]
-    , div [] [ text (String.fromInt model) ]
-    , button [ onClick Increment ] [ text "+" ]
+  div [ class "darkMode" ]
+    [ header 
+      [] [button [ onClick Decrement ] [ text "-" ]
+      , div [] [ text (String.fromInt model) ]
+      , button [ onClick Increment ] [ text "+" ]]
     ]

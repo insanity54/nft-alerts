@@ -2,20 +2,34 @@
 
 - name: Spin down VPS 1
   ngine_io.vultr.vultr_server:
-    name: "immls_1"
+    name: "nft-alerts"
     state: absent
+  register: res
+  with_sequence: count=2
+  # repeated 2 times because it doesnt wait long enough for the instance to be destroyed before moving on
 
-- name: Spin down VPS 2
-  ngine_io.vultr.vultr_server:
-    name: "immls_2"
-    state: absent
+#"status": "active",
 
-- name: Spin down VPS 3
-  ngine_io.vultr.vultr_server:
-    name: "immls_3"
-    state: absent
+- name: debug
+  debug:
+    var: res
 
-- name: Spin down VPS 4
-  ngine_io.vultr.vultr_server:
-    name: "immls_4"
+- name: wait for Vultr to catch up
+  ansible.builtin.pause:
+    seconds: 10
+
+# - name: Wait for SSH to be down
+#   wait_for:
+#     port: 22
+#     host: "{{ ansible_ssh_host }}"
+#     state: absent
+#   register: id
+
+# - debug:
+#     var: idk
+
+- name: belete storage volume
+  vultr_block_storage:
+    name: ubq
     state: absent
+  with_sequence: count=2

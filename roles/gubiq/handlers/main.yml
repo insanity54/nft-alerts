@@ -5,7 +5,15 @@
     name: systemd-journald
     state: restarted
 
-- name: restart voddo
+- name: start gubiq
   ansible.builtin.systemd:
-    name: voddo
+    name: gubiq
+    enabled: yes
     state: restarted
+
+- name: restart gubiq
+  ansible.builtin.systemd:
+    name: gubiq
+    state: restarted
+
+

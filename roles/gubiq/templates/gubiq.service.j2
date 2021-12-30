@@ -1,0 +1,13 @@
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description="gubiq"
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/gubiq --config /etc/gubiq/gubiq.conf.toml
+WorkingDirectory=/home/gubiq
+Type=simple
+User=gubiq
+Group=gubiq

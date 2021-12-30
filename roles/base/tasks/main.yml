@@ -1,0 +1,49 @@
+---
+
+# greets https://stackoverflow.com/a/54735937/1004931
+- name: Check SSH known_hosts for {{ inventory_hostname }}
+  local_action: shell ssh-keygen -F {{ inventory_hostname }}
+  register: checkForKnownHostsEntry
+  failed_when: false
+  changed_when: false
+  ignore_errors: yes
+
+- name: Add {{ inventory_hostname }} to SSH known hosts automatically
+  when: checkForKnownHostsEntry.rc == 1
+  changed_when: checkForKnownHostsEntry.rc == 1
+  set_fact:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+
+- name: Wait for SSH to be up
+  wait_for_connection:
+    timeout: 30
+- name: wait for boot-finished file to exist
+  raw: test -f /var/lib/cloud/instance/boot-finished
+  retries: 50
+  register: cmd_res
+  changed_when: false
+  until: cmd_res is success
+
+- name: gather facts
+  ansible.builtin.setup:
+
+
+- name: Enable journalctl persistent logging
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/journald.conf
+    search_string: '^Storage='
+    line: 'Storage=persistent'
+    state: present
+  notify: 
+    - restart systemd-journald
+
+- name: create ufw firewall exception for mosh
+  community.general.ufw:
+    rule: allow
+    port: 60000:61000
+    proto: udp
+
+- name: install node
+  roles:
+    - role: geerlingguy.nodejs

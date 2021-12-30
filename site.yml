@@ -1,0 +1,21 @@
+---
+
+- hosts: localhost
+  roles:
+    - role: vps-up
+
+
+
+- hosts: nft-alerts
+  gather_facts: no
+  vars:
+    - ansible_user: root
+    - ansible_ssh_private_key_file: ~/.ssh/leo
+    - zerotier_state: present
+    - zerotier_network: "{{ lookup('env', 'ZEROTIER_NETWORK_ID') }}"
+  roles:
+    - role: base
+    - role: geerlingguy.nodejs
+    - role: zerotier
+    - role: redis
+    - role: gubiq

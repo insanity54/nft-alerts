@@ -1,0 +1,136 @@
+---
+
+- name: set GUBIQ_SERVER_ADDRESS in local .env file (for development purposes)
+  lineinfile:
+    path: ./.env
+    search_string: GUBIQ_SERVER_ADDRESS
+    line: "GUBIQ_SERVER_ADDRESS={{ zerotier_interface_ip }}"
+    state: present
+  delegate_to: localhost
+
+
+- name: determine a valid hostname
+  set_fact:
+    hostonamu: "{{ inventory_hostname | regex_replace('_', '-') }}"
+
+- name: deboogey
+  debug:
+    var: hostonamu
+
+- name: set hostname
+  ansible.builtin.hostname:
+    name: "{{ hostonamu }}"
+
+- name: Ensure group gubiq exists
+  ansible.builtin.group:
+    name: gubiq
+    state: present
+
+- name: create user account
+  ansible.builtin.user:
+    name: gubiq
+    groups: gubiq
+    shell: /bin/bash
+    create_home: yes
+
+- name: Set Twitter api key in env
+  ansible.builtin.lineinfile:
+    dest: /root/.bashrc
+    line: "export TWITTER_API_KEY={{ lookup('env', 'TWITTER_API_KEY') }}"
+    state: present
+
+- name: Create partition for block storage
+  community.general.parted:
+    device: /dev/vdb
+    number: 1
+    state: present
+    label: gpt
+    fs_type: ext4
+
+- name: Create a ext4 filesystem 
+  community.general.filesystem:
+    fstype: ext4
+    dev: /dev/vdb1
+
+- name: mount block storage
+  ansible.posix.mount:
+    path: /srv/ubq
+    src: /dev/vdb1
+    fstype: ext4
+    opts: defaults,noatime,nofail
+    state: mounted
+
+- name: set perms on /srv/ubq
+  file:
+    state: directory
+    path: /srv/ubq
+    owner: gubiq
+    group: gubiq
+    mode: '0755'
+
+- name: Install dependencies
+  become: yes
+  apt:
+    pkg: 
+      - python3
+      - python3-pip
+      - mg 
+      - git
+      - magic-wormhole
+      - mosh
+    state: present
+    update_cache: yes
+
+- name: create gubiq config dir
+  file:
+    dest: /etc/gubiq/
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: insert gubiq config
+  template:
+    src: gubiq.conf.toml.j2
+    dest: /etc/gubiq/gubiq.conf.toml
+    mode: '0755'
+    owner: gubiq
+    group: gubiq
+
+- name: download gubiq
+  get_url:
+    url: https://github.com/ubiq/go-ubiq/releases/download/v5.4.0/gubiq-linux-amd64
+    dest: /tmp/gubiq-linux-amd64
+    checksum: sha256:a813c1cbd523868dd4476ad0605fcbc816dfa0f205f9435548455e3fb81f15a3
+    mode: '0755'
+
+- name: copy gubiq to bindir
+  ansible.builtin.copy:
+    src: /tmp/gubiq-linux-amd64
+    dest: /usr/bin/gubiq
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+# - name: create ufw firewall exception for gubiq websockets
+#   community.general.ufw:
+#     rule: allow
+#     port: 8546
+#     proto: tcp
+
+- name: Install gubiq system service
+  ansible.builtin.template:
+    src: templates/gubiq.service.j2
+    dest: /etc/systemd/system/gubiq.service
+    owner: root
+    group: root
+    mode: '0755'
+  notify: 
+    - restart gubiq
+
+- name: enable gubiq
+  ansible.builtin.systemd:
+      name: gubiq
+      state: started
+      enabled: yes

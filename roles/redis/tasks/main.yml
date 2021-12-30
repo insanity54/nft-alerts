@@ -1,0 +1,132 @@
+---
+
+- name: Ensure group redis exists
+  ansible.builtin.group:
+    name: redis
+    state: present
+
+- name: create redis user account
+  ansible.builtin.user:
+    name: redis
+    groups: redis
+    create_home: no
+    system: yes
+    state: present
+
+- name: Check if redis exists
+  command: which redis-server
+  register: which_redis
+
+- name: download & extract redis
+  ansible.builtin.unarchive:
+    src: https://download.redis.io/releases/redis-6.2.6.tar.gz
+    dest: /root
+    remote_src: yes
+  
+- name: compile redis
+  community.general.make:
+    chdir: /root/redis-6.2.6/src
+    params:
+      USE_SYSTEMD: yes
+  become: yes
+  when: which_redis.rc == 1
+  notify: restart redis
+
+- name: install redis
+  community.general.make:
+    chdir: /root/redis-6.2.6/src
+    target: install
+  become: yes
+  when: which_redis.rc == 1
+  notify: restart redis
+
+- name: make a conf dir for redis
+  file:
+    state: directory
+    path: /etc/redis
+    owner: redis
+    group: redis
+    mode: '0755'
+
+- name: make a log dir for redis
+  file:
+    state: directory
+    path: /var/log/redis
+    owner: redis
+    group: redis
+    mode: '0755'
+
+- name: /var/lib/redis dir
+  file:
+    state: directory
+    path: /var/lib/redis
+    owner: redis
+    group: redis
+    mode: '0755'
+
+- name: Install redis conf
+  template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+    mode: '0644'
+    owner: redis
+    group: redis
+  notify: restart redis
+
+- name: Install redis system service
+  ansible.builtin.template:
+    src: templates/redis-server.service.j2
+    dest: /etc/systemd/system/redis-server.service
+    owner: root
+    group: root
+    mode: '0755'
+  notify: 
+    - restart redis
+
+- name: git clone RedisTimeSeries module
+  ansible.builtin.git:
+    repo: https://github.com/RedisTimeSeries/RedisTimeSeries.git
+    dest: /root/RedisTimeSeries
+    recursive: true
+    update: no
+    version: 8fab5dd96bbd09a1240b6521f198f291e59f68c3
+
+- name: Check if redistimeseries.so exists
+  stat:
+    path: /root/RedisTimeSeries/redistimeseries.so
+  register: stat
+
+- name: Install RedisTimeSeries deps
+  shell:
+    /root/RedisTimeSeries/system-setup.py
+  when: stat.stat.exists | bool == false
+
+- name: compile RedisTimeSeries
+  community.general.make:
+    chdir: /root/RedisTimeSeries
+    target: build
+  become: yes
+  when: stat.stat.exists | bool == false
+
+- name: copy redistimeseries.so to its place
+  copy:
+    src: /root/RedisTimeSeries/bin/redistimeseries.so
+    dest: /srv/ubq/redistimeseries.so
+    remote_src: yes
+    mode: '0755'
+    owner: redis
+    group: redis
+  notify: restart redis
+
+- name: create ufw firewall exception for redis
+  community.general.ufw:
+    rule: allow
+    port: 6379
+    proto: tcp
+
+
+- name: enable redis-server
+  ansible.builtin.systemd:
+      name: redis-server
+      state: started
+      enabled: yes

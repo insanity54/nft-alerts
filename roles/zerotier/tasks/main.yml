@@ -1,0 +1,19 @@
+---
+
+- import_role: 
+    name: cchurch.zerotier
+
+- name: get zerotier interface ip
+  command: zerotier-cli -j listnetworks
+  register: ztnetworks
+
+- name: debug
+  debug:
+    var: ztnetworks.stdout
+
+- set_fact:
+    zerotier_interface_ip: "{{ (ztnetworks.stdout | from_json)[0].assignedAddresses[0] | replace('/24', '') }}"
+
+- name: debug
+  debug:
+    var: zerotier_interface_ip

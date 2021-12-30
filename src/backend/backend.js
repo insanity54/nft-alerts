@@ -76,7 +76,6 @@ const TG = require('./token.gallery.js');
     };
     debug(tokenStores)
     const blockStart = 700000
-    process.exit();
 
     await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
 

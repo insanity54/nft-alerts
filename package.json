@@ -13,13 +13,12 @@
   "author": "Chris Grimmett <chris@grimtech.net>",
   "license": "Unlicense",
   "scripts": {
-    "dev": "DEBUG=nft-alerts NODE_ENV=development node src/backend/backend",
-    "dev:frontend": "elm reactor",
-    "dev:build": "src/frontend/build.sh",
-    "build": "parcel build src/index.html",
+    "dev": "DEBUG=nft-alerts NODE_ENV=development node backend/backend",
+    "serve": "elm reactor",
+    "build": "elm build frontend/Main.elm --optimize --output=dist/elm.js",
     "up": "./ansible-playbook.sh -i vultr.yml site.yml",
     "down": "./ansible-playbook.sh -i vultr.yml destroy.yml",
-    "start": "NODE_ENV=production node src/backend/backend"
+    "start": "NODE_ENV=production node backend/backend"
   },
   "dependencies": {
     "dotenv": "^10.0.0",

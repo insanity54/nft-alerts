@@ -75,7 +75,7 @@ const TG = require('./token.gallery.js');
         tokenStores.push(store);
     };
     debug(tokenStores)
-    const blockStart = 1644462 // 1644462 is first known block with TG tx
+    const blockStart = 700000
 
     await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
 
@@ -103,7 +103,7 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+] Transaction found on block ${ i }`);
+                    debug(`[+] Transaction found on block ${ lastBlockNumber }`);
                     debug({
                         address: tx.from,
                         value: web3.utils.fromWei(tx.value, 'ether'),

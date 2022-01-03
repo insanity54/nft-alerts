@@ -67,8 +67,6 @@ const getTokenStores = async (tokenSet) => {
         debug(`[*] ${tokenId} -> ${store}`)
         tokenStores.push(store);
     };
-    debug(tokenStores);
-
     return tokenStores;
 }
 
@@ -94,7 +92,7 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+] Transaction found on block ${ i }`);
+                    debug(`[+] Transaction found on block ${ lastBlockNumber }`);
                     debug({
                         address: tx.from,
                         value: web3.utils.fromWei(tx.value, 'ether'),

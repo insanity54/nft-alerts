@@ -6,6 +6,7 @@
 SADD tokenSet [<tokenId>, <tokenId>, <...>]
 HMSET token:<tokenId>:metadata store <store> metaId <metaId> inserted <inserted> preview <preview>
 ZADD token:<tokenId>:sales <timestamp>, <txHash>
+SET blockCounter <number> # the latest UBQ block that nft-alerts has processed
 ```
 
 

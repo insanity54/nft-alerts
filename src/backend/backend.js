@@ -13,9 +13,6 @@ const TG = require('./token.gallery.js');
 
 
 
-
-(async () => {
-
     // debug(`connecting to gubiq at ${web3.currentProvider.url} ...`);
 
     // web3.currentProvider.on('data', (data) => {
@@ -35,51 +32,45 @@ const TG = require('./token.gallery.js');
     // })
 
 
+const discoverTokens = async () => {
+    // * get the entire list of tokens on Token.gallery
+    // * store them in redis
+    debug('[i] Discovering Tokens')
 
+    const tg = new TG();
+    const tokies = await tg.getLatestTokens();
+    let tokenCounter = 0;
 
-    // // * get the entire list of tokens on Token.gallery
-    // // * store them in redis
-    // const tg = new TG();
-    // const tokies = await tg.getLatestTokens();
-    // let tokenCounter = 0;
+    for (const token of tokies) {
+        debug(`[*] Adding token "${token.metadata.name}" to redis`);
 
-    // for (const token of tokies) {
-    //     debug(`[*] Adding token "${token.metadata.name}" to redis`);
+        tokenCounter++;
+        await redis
+            .pipeline([
+                ["sadd", 'tokenSet', token.nftId],
+                ["hmset", `token:${token.nftId}:metadata`, 'store', token.store, 'metaId', token.metaId, 'inserted', token.inserted, 'preview', token.metadata.preview, 'name', token.metadata.name ],
+            ])
+            .exec((err, results) => {
+                console.log(results[0]);
+                console.log(results[1]);
+            });
 
-    //     tokenCounter++;
-    //     await redis
-    //         .pipeline([
-    //             ["sadd", 'tokenSet', token.nftId],
-    //             ["hmset", `token:${token.nftId}:metadata`, 'store', token.store, 'metaId', token.metaId, 'inserted', token.inserted, 'preview', token.metadata.preview, 'name', token.metadata.name ],
-    //         ])
-    //         .exec((err, results) => {
-    //             console.log(results[0]);
-    //             console.log(results[1]);
-    //         });
+    }
+    debug(`[+] token import complete with ${tokenCounter} tokens`)
+}
 
-    // }
-    // debug(`[+] token import complete with ${tokenCounter} tokens`)
+const getTokenStores = async (tokenSet) => {
 
-
-
-    // * crawl the UBQ blockchain and find all token sales
-    // * store the sales in redis
-    // ex: ['zadd', `token:${token.nftId}:sales`, timestamp, 'field', 'value']
-    const tokenSet = await redis.smembers('tokenSet');
-    let blockTarget = await web3.eth.getBlockNumber();
-    debug(`[i] blockTarget:${blockTarget}`);
     let tokenStores = [];
     for (const tokenId of tokenSet) {
         const store = await redis.hget(`token:${tokenId}:metadata`, 'store');
         debug(`[*] ${tokenId} -> ${store}`)
         tokenStores.push(store);
     };
-    debug(tokenStores)
-    const blockStart = 1644462 // 1644462 is first known block with TG tx
+    debug(tokenStores);
 
-    await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
-
-})();
+    return tokenStores;
+}
 
 // greets https://medium.com/coinmonks/monitoring-an-ethereum-address-with-web3-js-970c0a3cf96d
 async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
@@ -114,13 +105,35 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
             }
         }
     }
+    await redis.set(`blockCounter`, i); // set the blockCounter
 }
 
+const getBlockStart = async () => {
+    // I *think* 1644462 is first known UBQ block with a Token Gallery tx
+
+    let blockStart = 0;
+    try {
+        blockStart = await redis.get('blockCounter');
+    } catch (e) {
+        console.error(`Error while fetching blockCounter in redis.`);
+        console.error(e);
+    }
+    return blockStart;
+}
+
+const main = (async () => {
+
+    await discoverTokens();
+    const blockTarget = await web3.eth.getBlockNumber();
+    const tokenSet = await redis.smembers('tokenSet');
+    const tokenStores = await getTokenStores(tokenSet);
+    const blockStart = await getBlockStart();
 
 
+    await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
+    debug(`[+] main() is complete`);
 
-// find list of tokens on token.gallery (store some token metadata, preview image)
-// find & save token sales (store the UBQ tx hash)
+})();
 
 
 

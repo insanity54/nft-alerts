@@ -14,6 +14,7 @@ class TG {
 
 
     // const page7 = await tg.latestTokensPage(7);
+    // 1 indexed!
     async latestTokensPage (pageNumber = 1) {
         debug(`latestTokensPage pageNumber=${pageNumber}`);
         const res = await fetch(`https://token.gallery/api/nfts/latest?page=${pageNumber}`);
@@ -21,11 +22,15 @@ class TG {
     }
 
 
-    async getLatestTokens (pageLimit = 1000000) {
-        let pageCounter = 1;
+    async getLatestTokens (initialPage = 1, pageLimit = 1000000) {
+        debug(`[i] getting latest tokens including pages ${initialPage}-${pageLimit}`)
         let allTokensList = [];
 
-        for (let pageCounter = 1; pageCounter < pageLimit; pageCounter++) {
+        for (
+                let pageCounter = initialPage; 
+                pageCounter <= pageLimit; 
+                pageCounter++
+            ) {
             let tokensList = await this.latestTokensPage(pageCounter);
             if (tokensList.length < 1) {
                 break;

@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+if (typeof process.env.GUBIQ_SERVER_ADDRESS === 'undefined') throw new Error('GUBIQ_SERVER_ADDRESS is undefined in env.')
+
 const web3 = require('./web3');
 const debug = require('debug')('nft-alerts');
 const Redis = require('ioredis');
@@ -36,11 +38,29 @@ const discoverTokens = async () => {
     // * get the entire list of tokens on Token.gallery
     // * store them in redis
     debug('[i] Discovering Tokens')
-
     const tg = new TG();
-    const tokies = await tg.getLatestTokens();
-    let tokenCounter = 0;
 
+    // get the first page of latest tokens.
+    // If the most latest token is known to nft-alerts, we abort.
+    let tokies = await tg.getLatestTokens(1, 1);
+    if (tokies.length < 1) {
+        debug(`[-] aborting token discovery because there were no tokens received from Token Gallery /latest endpoing`);
+        debug(tokies)
+    }
+    const firstToken = tokies[0]
+    debug(firstToken)
+    const isFirstTokenKnown = await redis.sismember('tokenSet', firstToken.nftId);
+    debug(`[~] The first token ${(isFirstTokenKnown) ? 'is' : 'is not'} known`);
+    if (isFirstTokenKnown) {
+        debug('[-] Aborting token discovery because the newest token on Token Gallery is already known.')
+        return;
+    }
+
+
+    // fetch tokies beyond the first page
+    tokies = await tg.getLatestTokens(2);
+    // go through each Token Gallery token object and add it to redis
+    let tokenCounter = 0;
     for (const token of tokies) {
         debug(`[*] Adding token "${token.metadata.name}" to redis`);
 

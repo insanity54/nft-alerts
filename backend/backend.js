@@ -148,7 +148,7 @@ const main = (async () => {
     debug('[+] tokenstore fetch is complet')
     const blockStart = await getBlockStart();
 
-    debug(`[s] Time to CheckBlocks`)
+    debug(`[s] Time to CheckBlocks blockStart:${blockStart}, blockTarget:${blockTarget}, storelength:${tokenStores.length}, setlength:${tokenSet.length}`)
     await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
     debug(`[+] main() is complete`);
 

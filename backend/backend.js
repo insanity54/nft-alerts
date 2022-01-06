@@ -145,9 +145,10 @@ const main = (async () => {
     const blockTarget = await web3.eth.getBlockNumber();
     const tokenSet = await redis.smembers('tokenSet');
     const tokenStores = await getTokenStores(tokenSet);
+    debug('[+] tokenstore fetch is complet')
     const blockStart = await getBlockStart();
 
-
+    debug(`[s] Time to CheckBlocks`)
     await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
     debug(`[+] main() is complete`);
 

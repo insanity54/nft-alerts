@@ -90,7 +90,6 @@ const getTokenStores = async (tokenSet) => {
     let tokenStores = [];
     for (const tokenId of tokenSet) {
         const store = await redis.hget(`token:${tokenId}:metadata`, 'store');
-        debug(`[*] ${tokenId} -> ${store}`)
         tokenStores.push(store);
     };
     return tokenStores;

@@ -112,7 +112,7 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+] Transaction found on block ${ lastBlockNumber }`);
+                    debug(`[+] Transaction found on block ${ i }`);
                     debug({
                         address: tx.from,
                         value: web3.utils.fromWei(tx.value, 'ether'),
@@ -128,10 +128,11 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
 
 const getBlockStart = async () => {
     // I *think* 1644462 is first known UBQ block with a Token Gallery tx
+    const firstBlockWithToken = 1644462;
 
     try {
         const blockStart = await redis.get('blockCounter');
-        if (!blockStart) return 0;
+        if (!blockStart) return firstBlockWithToken;
         return blockStart
     } catch (e) {
         console.error(`Error while fetching blockCounter in redis.`);

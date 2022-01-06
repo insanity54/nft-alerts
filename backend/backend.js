@@ -41,7 +41,7 @@ const discoverTokens = async () => {
     const tg = new TG();
 
     // get the first page of latest tokens.
-    // If the most latest token is known to nft-alerts, we abort.
+    // If the most latest token is known to nft-alerts, we know everything so we abort discovery.
     let tokies = await tg.getLatestTokens(1, 1);
     if (tokies.length < 1) {
         debug(`[-] aborting token discovery because there were no tokens received from Token Gallery /latest endpoing`);
@@ -50,6 +50,7 @@ const discoverTokens = async () => {
     const firstToken = tokies[0]
     debug(firstToken)
     const isFirstTokenKnown = await redis.sismember('tokenSet', firstToken.nftId);
+    debug(isFirstTokenKnown)
     debug(`[~] The first token ${(isFirstTokenKnown) ? 'is' : 'is not'} known`);
     if (isFirstTokenKnown) {
         debug('[-] Aborting token discovery because the newest token on Token Gallery is already known.')
@@ -57,22 +58,27 @@ const discoverTokens = async () => {
     }
 
 
-    // fetch tokies beyond the first page
-    tokies = await tg.getLatestTokens(2);
+    // fetch tokies for real this time
+    tokies = await tg.getLatestTokens(1);
     // go through each Token Gallery token object and add it to redis
     let tokenCounter = 0;
     for (const token of tokies) {
         debug(`[*] Adding token "${token.metadata.name}" to redis`);
 
         tokenCounter++;
+
         await redis
             .pipeline([
                 ["sadd", 'tokenSet', token.nftId],
                 ["hmset", `token:${token.nftId}:metadata`, 'store', token.store, 'metaId', token.metaId, 'inserted', token.inserted, 'preview', token.metadata.preview, 'name', token.metadata.name ],
             ])
             .exec((err, results) => {
-                console.log(results[0]);
-                console.log(results[1]);
+                if (err) {
+                    debug('[!] there was an unhandled error while inserting token data into redis')
+                    throw err;
+                    debug(results[0]);
+                    debug(results[1]);
+                }
             });
 
     }
@@ -101,17 +107,6 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
                 const txMatchIndex = arrayOfTxHashes.indexOf(tx.to);
                 debug(`[*] checking ${tx.to}`)
                 if (txMatchIndex > -1) {
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
-                    debug(`[+][+][+][+][+][+][+][+][+][+][+]`);
                     debug(`[+] Transaction found on block ${ i }`);
                     debug({
                         address: tx.from,
@@ -122,8 +117,10 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
                 }
             }
         }
+        // set a blockCounter so we know the block numbers we have checked
+        await redis.set(`blockCounter`, i);
+
     }
-    await redis.set(`blockCounter`, i); // set the blockCounter
 }
 
 const getBlockStart = async () => {
@@ -142,16 +139,27 @@ const getBlockStart = async () => {
 
 const main = (async () => {
 
+    // get the latest block number
+    // order is important here.
+    // we need to know the latest block number before searching for new TG tokens
+    // because we dont want to be looking through the blocks which may contain
+    // newly minted tokens that we are unaware of.
+    const blockEnd = await web3.eth.getBlockNumber();
+
+    // find the UBQ block to start at. We get either the first block containing a TG tx
+    // or the most recent block that we have processed.
+    const blockStart = await getBlockStart();
+
     await discoverTokens();
-    const blockTarget = await web3.eth.getBlockNumber();
     const tokenSet = await redis.smembers('tokenSet');
     const tokenStores = await getTokenStores(tokenSet);
     debug('[+] tokenstore fetch is complet')
-    const blockStart = await getBlockStart();
 
-    debug(`[s] Time to CheckBlocks blockStart:${blockStart}, blockTarget:${blockTarget}, storelength:${tokenStores.length}, setlength:${tokenSet.length}`)
-    await checkBlocks(blockStart, blockTarget, tokenStores, tokenSet);
+    debug(`[s] Time to CheckBlocks blockStart:${blockStart}, blockEnd:${blockEnd}, storelength:${tokenStores.length}, setlength:${tokenSet.length}`)
+    await checkBlocks(blockStart, blockEnd, tokenStores, tokenSet);
     debug(`[+] main() is complete`);
+
+    process.exit();
 
 })();
 

@@ -129,14 +129,14 @@ async function checkBlocks(start, end, arrayOfTxHashes, tokenSet) {
 const getBlockStart = async () => {
     // I *think* 1644462 is first known UBQ block with a Token Gallery tx
 
-    let blockStart = 0;
     try {
-        blockStart = await redis.get('blockCounter');
+        const blockStart = await redis.get('blockCounter');
+        if (!blockStart) return 0;
+        return blockStart
     } catch (e) {
         console.error(`Error while fetching blockCounter in redis.`);
         console.error(e);
     }
-    return blockStart;
 }
 
 const main = (async () => {
